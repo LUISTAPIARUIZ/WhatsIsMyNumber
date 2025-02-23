@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import 'animate.css'; // Importa animate.css para las animaciones
+import InitialForm from './components/InitialForm';
+import Fireworks from './components/Fireworks';
 
 function App() {
-  const [digitCount, setDigitCount] = useState(4);
-  const [player1Number, setPlayer1Number] = useState("");
-  const [player2Number, setPlayer2Number] = useState("");
+  const [gameState, setGameState] = useState({
+    player1Name: "",
+    player2Name: "",
+    player1Number: "",
+    player2Number: "",
+    digitCount: 4
+  });
   const [player1Guess, setPlayer1Guess] = useState("");
   const [player2Guess, setPlayer2Guess] = useState("");
   const [turn, setTurn] = useState(1);
@@ -25,31 +31,37 @@ function App() {
   };
 
   const handleGuess = () => {
+    const currentGuess = turn === 1 ? player1Guess : player2Guess;
+    const targetNumber = turn === 1 ? gameState.player2Number : gameState.player1Number;
+    const currentPlayerName = turn === 1 ? gameState.player1Name : gameState.player2Name;
+
+    const matches = countMatches(currentGuess, targetNumber);
+    
     if (turn === 1) {
-      const matches = countMatches(player1Guess, player2Number);
-      setPlayer1Attempts([...player1Attempts, { guess: player1Guess, matches }]);
-      setFeedback(`Jugador 1 tiene ${matches} coincidencias.`);
-      if (matches === digitCount) {
-        setWinner(1);
-      }
+      setPlayer1Attempts([...player1Attempts, { guess: currentGuess, matches }]);
+      setFeedback(`${currentPlayerName} tiene ${matches} coincidencias.`);
     } else {
-      const matches = countMatches(player2Guess, player1Number);
-      setPlayer2Attempts([...player2Attempts, { guess: player2Guess, matches }]);
-      setFeedback(`Jugador 2 tiene ${matches} coincidencias.`);
-      if (matches === digitCount) {
-        setWinner(2);
-      }
+      setPlayer2Attempts([...player2Attempts, { guess: currentGuess, matches }]);
+      setFeedback(`${currentPlayerName} tiene ${matches} coincidencias.`);
     }
-    setTurn(turn === 1 ? 2 : 1);
+
+    if (matches === gameState.digitCount) {
+      setWinner(turn);
+    } else {
+      setTurn(turn === 1 ? 2 : 1);
+    }
+    
+    if (turn === 1) {
+      setPlayer1Guess("");
+    } else {
+      setPlayer2Guess("");
+    }
   };
 
-  const startGame = () => {
-    if (player1Number.length === digitCount && player2Number.length === digitCount) {
-      setGameStarted(true);
-      setFeedback("Juego iniciado! Turno del Jugador 1.");
-    } else {
-      setFeedback("Ambos jugadores deben ingresar números válidos.");
-    }
+  const handleStartGame = (gameData) => {
+    setGameState(gameData);
+    setGameStarted(true);
+    setFeedback(`¡Juego iniciado! Turno de ${gameData.player1Name}`);
   };
 
   const renderAttempts = (attempts) => {
@@ -63,45 +75,7 @@ function App() {
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-lg space-y-6 transform transition-all duration-500 hover:scale-105">
         <h1 className="text-3xl font-bold text-center text-indigo-600 mb-4 animate__animated animate__fadeIn">Adivina mi número</h1>
         {!gameStarted ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-lg font-medium text-gray-700">Elige la cantidad de dígitos:</label>
-              <input
-                type="number"
-                value={digitCount}
-                onChange={(e) => setDigitCount(Number(e.target.value))}
-                className="w-full p-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-lg font-medium text-gray-700">Jugador 1 ingresa su número:</label>
-              <input
-                type="password"
-                value={player1Number}
-                onChange={(e) => setPlayer1Number(e.target.value)}
-                className="w-full p-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-                maxLength={digitCount}
-              />
-            </div>
-            <div>
-              <label className="block text-lg font-medium text-gray-700">Jugador 2 ingresa su número:</label>
-              <input
-                type="password"
-                value={player2Number}
-                onChange={(e) => setPlayer2Number(e.target.value)}
-                className="w-full p-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-                maxLength={digitCount}
-              />
-            </div>
-            <div>
-              <button 
-                onClick={startGame} 
-                className="w-full py-2 px-4 mt-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300 ease-in-out"
-              >
-                Comenzar juego
-              </button>
-            </div>
-          </div>
+          <InitialForm onStartGame={handleStartGame} />
         ) : (
           <div className="flex space-x-6">
             <div className="w-2/3">
@@ -114,7 +88,7 @@ function App() {
                     onChange={(e) => setPlayer1Guess(e.target.value)}
                     placeholder="Jugador 1, ingresa tu suposición"
                     className="w-full p-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-                    maxLength={digitCount}
+                    maxLength={gameState.digitCount}
                   />
                 ) : (
                   <input
@@ -123,7 +97,7 @@ function App() {
                     onChange={(e) => setPlayer2Guess(e.target.value)}
                     placeholder="Jugador 2, ingresa tu suposición"
                     className="w-full p-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
-                    maxLength={digitCount}
+                    maxLength={gameState.digitCount}
                   />
                 )}
               </div>
@@ -148,17 +122,21 @@ function App() {
           </div>
         )}
 
-        {/* Animación de ganador */}
         {winner && (
-          <div className="absolute inset-0 flex justify-center items-center animate__animated animate__zoomIn animate__delay-1s">
-            <div className="bg-green-500 text-white p-6 rounded-full animate__animated animate__heartBeat">
-              <h2 className="text-4xl font-bold">¡Jugador {winner} gana!</h2>
-              <div className="fireworks-animation">
-                {/* Aquí puedes agregar un componente para fuegos artificiales */}
-              </div>
+          <div className="fixed inset-0 flex justify-center items-center animate__animated animate__zoomIn">
+            <div className="bg-green-500 text-white p-6 rounded-xl z-50 text-center">
+              <h2 className="text-4xl font-bold mb-4">
+                ¡{winner === 1 ? gameState.player1Name : gameState.player2Name} gana!
+              </h2>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-white text-green-500 px-4 py-2 rounded-md mt-4"
+              >
+                Jugar de nuevo
+              </button>
             </div>
-            <div className="absolute inset-0 bg-black opacity-50"></div>
-            {/* Fuegos artificiales o animación */}
+            <div className="fixed inset-0 bg-black opacity-50"></div>
+            <Fireworks />
           </div>
         )}
       </div>
